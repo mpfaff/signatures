@@ -10,8 +10,8 @@ impl Serialize for Signature {
 
         let mut seq = serializer.serialize_tuple(Signature::BYTE_SIZE)?;
 
-        for byte in self.to_bytes() {
-            seq.serialize_element(&byte)?;
+        for byte in self.as_bytes() {
+            seq.serialize_element(byte)?;
         }
 
         seq.end()
@@ -60,7 +60,7 @@ impl serde_bytes::Serialize for Signature {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_bytes(&self.to_bytes())
+        serializer.serialize_bytes(self.as_bytes())
     }
 }
 

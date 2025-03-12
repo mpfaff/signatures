@@ -21,7 +21,7 @@ impl fmt::Debug for ComponentFormatter<'_> {
 
 impl fmt::LowerHex for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for component in [&self.R, &self.s] {
+        for component in self.as_components() {
             for byte in component {
                 write!(f, "{:02x}", byte)?;
             }
@@ -32,7 +32,7 @@ impl fmt::LowerHex for Signature {
 
 impl fmt::UpperHex for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for component in [&self.R, &self.s] {
+        for component in self.as_components() {
             for byte in component {
                 write!(f, "{:02X}", byte)?;
             }

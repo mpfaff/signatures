@@ -312,10 +312,7 @@ pub type SignatureBytes = [u8; Signature::BYTE_SIZE];
 /// elements at the time a signature is verified.
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(C)]
-pub struct Signature {
-    R: ComponentBytes,
-    s: ComponentBytes,
-}
+pub struct Signature(SignatureBytes);
 
 impl Signature {
     /// Size of an encoded Ed25519 signature in bytes.
@@ -323,19 +320,16 @@ impl Signature {
 
     /// Parse an Ed25519 signature from a byte slice.
     pub fn from_bytes(bytes: &SignatureBytes) -> Self {
-        let mut R = ComponentBytes::default();
-        let mut s = ComponentBytes::default();
-
-        let components = bytes.split_at(COMPONENT_SIZE);
-        R.copy_from_slice(components.0);
-        s.copy_from_slice(components.1);
-
-        Self { R, s }
+        Self(*bytes)
     }
 
     /// Parse an Ed25519 signature from its `R` and `s` components.
     pub fn from_components(R: ComponentBytes, s: ComponentBytes) -> Self {
-        Self { R, s }
+        let mut ret = [0u8; Self::BYTE_SIZE];
+        let (R_ret, s_ret) = ret.split_at_mut(COMPONENT_SIZE);
+        R_ret.copy_from_slice(&R);
+        s_ret.copy_from_slice(&s);
+        Self(ret)
     }
 
     /// Parse an Ed25519 signature from a byte slice.
@@ -351,27 +345,45 @@ impl Signature {
 
     /// Bytes for the `R` component of a signature.
     pub fn r_bytes(&self) -> &ComponentBytes {
-        &self.R
+        self.0.split_first_chunk::<COMPONENT_SIZE>().unwrap().0
     }
 
     /// Bytes for the `s` component of a signature.
     pub fn s_bytes(&self) -> &ComponentBytes {
-        &self.s
+        self.0.split_last_chunk::<COMPONENT_SIZE>().unwrap().1
+    }
+
+    /// Returns the `R` and `s` components of a signature.
+    pub fn as_components(&self) -> [&ComponentBytes; 2] {
+        let (R, s) = self.0.split_at(COMPONENT_SIZE);
+        [R.try_into().unwrap(), s.try_into().unwrap()]
+    }
+
+    /// Returns the `R` and `s` components of a signature.
+    pub fn to_components(&self) -> [ComponentBytes; 2] {
+        let (R, s) = self.0.split_at(COMPONENT_SIZE);
+        [R.try_into().unwrap(), s.try_into().unwrap()]
     }
 
     /// Return the inner byte array.
     pub fn to_bytes(&self) -> SignatureBytes {
-        let mut ret = [0u8; Self::BYTE_SIZE];
-        let (R, s) = ret.split_at_mut(COMPONENT_SIZE);
-        R.copy_from_slice(&self.R);
-        s.copy_from_slice(&self.s);
-        ret
+        self.0
+    }
+
+    /// Return the inner byte array.
+    pub fn into_bytes(self) -> SignatureBytes {
+        self.0
+    }
+
+    /// Return a reference to the inner byte array.
+    pub fn as_bytes(&self) -> &SignatureBytes {
+        &self.0
     }
 
     /// Convert this signature into a byte vector.
     #[cfg(feature = "alloc")]
     pub fn to_vec(&self) -> Vec<u8> {
-        self.to_bytes().to_vec()
+        self.as_bytes().to_vec()
     }
 }
 
@@ -402,19 +414,19 @@ impl AssociatedAlgorithmIdentifier for Signature {
 
 impl From<Signature> for SignatureBytes {
     fn from(sig: Signature) -> SignatureBytes {
-        sig.to_bytes()
+        sig.0
     }
 }
 
 impl From<&Signature> for SignatureBytes {
     fn from(sig: &Signature) -> SignatureBytes {
-        sig.to_bytes()
+        sig.0
     }
 }
 
 impl From<SignatureBytes> for Signature {
     fn from(bytes: SignatureBytes) -> Self {
-        Signature::from_bytes(&bytes)
+        Signature(bytes)
     }
 }
 
